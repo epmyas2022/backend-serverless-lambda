@@ -1,0 +1,11 @@
+version: '2.0'
+name: app-name
+deploy:
+  path: /path/to/app
+  dockerfile: Dockerfile
+  framework: vite
+  port: null
+environment:
+  NODE_ENV: production
+  PORT: 3000
+  VITE_API_URL: https://api.example.com
