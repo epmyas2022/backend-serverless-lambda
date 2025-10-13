@@ -45,7 +45,7 @@
         "./src"
       ],
       "@utils/*": [
-        "/utils/*"
+        "./utils/*"
       ],
       "@deploys/*": [
         "./deploys/*"

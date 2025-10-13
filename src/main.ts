@@ -8,7 +8,7 @@ async function loadBanner() {
 
 async function main() {
   loadBanner();
-  const deployer = new DeployWithDocker();
+  new DeployWithDocker();
 }
 
 main();

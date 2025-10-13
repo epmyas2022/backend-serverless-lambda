@@ -1,5 +1,6 @@
 //SE ENCARGARA DE HACER LA CONSTRUCCION DEL PROYECTO CON DOCKER ASI COMO LEVANTAR Y DETENER EL SERVICIO
 import { DockerClient } from "@docker/node-sdk";
+import { catchError } from "../utils/helper.ts";
 
 export class DeployWithDocker {
   protected dockerClient?: DockerClient;
@@ -7,11 +8,14 @@ export class DeployWithDocker {
     this.init();
   }
   private async init() {
-    this.dockerClient = await DockerClient.fromDockerConfig();
-    if (!this.dockerClient) throw new Error("🚨 Docker client not initialized");
-    console.log("🐳 Docker client initialized");
+    const [error, client] = await catchError<DockerClient>(
+      DockerClient.fromDockerConfig()
+    );
+    if (error)
+      throw new Error(`🚨 Docker client not initialized: ${error.message}`);
 
-    console.log(await this.dockerClient.containerList());
+    this.dockerClient = client;
+    console.log("🐳 Docker client initialized");
   }
 
   async getDockerFile() {}
