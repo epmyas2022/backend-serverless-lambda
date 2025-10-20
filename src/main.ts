@@ -8,7 +8,14 @@ async function loadBanner() {
 
 async function main() {
   loadBanner();
-  new DeployWithDocker();
+  ((await DeployWithDocker.init()).build({
+    dockerfile: ".docker/Dockerfile",
+    path: "C:\\Users\\casti\\Desktop\\web\\serverless\\template-example",
+    name: "my-serverless-app:latest",
+    environments: {
+      NODE_ENV: "production",
+    },
+  }))
 }
 
 main();

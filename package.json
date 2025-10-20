@@ -12,7 +12,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@docker/node-sdk": "^0.0.3",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
