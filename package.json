@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --exec node -r ts-node/register --env-file=.env ./src/main.ts"
+    "dev": "nodemon --exec node -r ts-node/register --env-file=.env ./src/main.ts | pino-pretty"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "dockerode-compose": "^1.4.0",
+    "pino": "^10.1.0",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
