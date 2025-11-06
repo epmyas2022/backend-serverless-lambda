@@ -9,7 +9,7 @@ async function loadBanner() {
 async function main() {
   await loadBanner();
 
-  await startWorker({
+await startWorker({
     name: "my-serverless-app-worker",
     host: "0.0.0.0",
     port: 80,

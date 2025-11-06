@@ -18,6 +18,11 @@ parentPort?.on("message", async (data: ServerConfig) => {
   const docker = DeployWithDocker.init();
 
   const isRunning = await docker.isRunning(name);
+  const isStopped = await docker.isStopped(name);
+
+  if (isStopped) {
+    await docker.start(name);
+  }
 
   if (!isRunning)
     await docker.run({
