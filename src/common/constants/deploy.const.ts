@@ -9,4 +9,12 @@ const StatusContainer = {
   DEAD: "dead",
 }
 
-export  { StatusContainer };
+
+const Domain = {
+  SSLIP: "sslip.io",
+  TRAEFIK: "traefik.me",
+  NIP: "nip.io",
+}
+
+
+export  { StatusContainer, Domain };
