@@ -12,8 +12,10 @@ export async function startWorker(workerData: ServerConfig): Promise<void> {
 
       worker.postMessage(workerData);
 
-      worker.on("message", (message) => {
-        logger.info("Message from worker:" + message);
+      worker.on("message", (message: { text: string; status: boolean }) => {
+        const { text } = message;
+
+        logger.info("Message from worker:" + text);
       });
 
       worker.on("error", (error) => {

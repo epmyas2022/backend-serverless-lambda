@@ -40,7 +40,8 @@ export function localUrl(
 
 export function createProxy(
   target: string,
-  ssl: boolean = false
+  ssl: boolean = false,
+  onError?: (err: Error, req: Request, res: Response | Socket) => void
 ): RequestHandler {
   return createProxyMiddleware({
     target: `http${ssl ? "s" : ""}://${target}`,
@@ -50,6 +51,7 @@ export function createProxy(
     on: {
       error: (err: Error, req: Request, _res: Response | Socket) => {
         logger.error(`Proxy error for ${req.url}: ${err.message}`);
+        if (onError) onError(err, req, _res);
       },
     },
   });

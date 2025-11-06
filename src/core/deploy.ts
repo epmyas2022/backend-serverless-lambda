@@ -4,9 +4,12 @@ import { join } from "node:path";
 import { directoryStream } from "../utils/files.ts";
 import { logger } from "../config/logger.ts";
 import { EnvironmentConfig } from "../config/enviroment.config.ts";
-import type { DeployRun, DeployBuild } from "../common/interfaces/deploy.interface.ts";
+import type {
+  DeployRun,
+  DeployBuild,
+} from "../common/interfaces/deploy.interface.ts";
 import { mapToExposedPorts, mapToPortBindings } from "../utils/mapper.ts";
-import  { StatusContainer } from "../common/constants/deploy.const.ts";
+import { StatusContainer } from "../common/constants/deploy.const.ts";
 import { catchError } from "../utils/helper.ts";
 
 /*
@@ -88,8 +91,9 @@ export class DeployWithDocker {
 
   async isStopped(containerId: string) {
     const [error, status] = await catchError(this.status(containerId));
-    return !error && (
-      status === StatusContainer.EXITED || status === StatusContainer.CREATED
+    return (
+      !error &&
+      (status === StatusContainer.EXITED || status === StatusContainer.CREATED)
     );
   }
 
@@ -140,6 +144,12 @@ export class DeployWithDocker {
         });
       }
     );
+  }
+
+  lifespan(containerId: string, lifespan: number = 60000): void {
+    setTimeout(async () => {
+      if (await this.isRunning(containerId)) this.stop(containerId);
+    }, lifespan);
   }
 
   async start(containerId: string) {

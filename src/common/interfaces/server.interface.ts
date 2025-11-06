@@ -6,5 +6,9 @@ export interface ServerConfig {
     port: number;
     host: string;
     image: string;
+
+    service?: {
+        lifespan?: number; // in seconds
+    }
 }
 

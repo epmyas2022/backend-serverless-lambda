@@ -7,6 +7,7 @@ const StatusContainer = {
   PAUSED: "paused",
   EXITED: "exited",
   DEAD: "dead",
+  STARTING: "starting",
 }
 
 
