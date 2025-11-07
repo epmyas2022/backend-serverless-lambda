@@ -42,13 +42,14 @@ async function post(
 ) {
   const { name, host, port, image } = request.body;
 
-  await startWorker({
+  //TODO: consytruir imagen del proyecto si no existe y guardar informacion en BD
+  /*   await startWorker({
     name,
     image,
     host: host || "0.0.0.0",
     port: port || 80,
     externalPort: 8088,
-  });
+  }); */
 
   return response.status(201).json({
     message: "Worker started successfully",

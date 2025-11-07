@@ -18,6 +18,7 @@ import { catchError } from "../utils/helper.ts";
 export class DeployWithDocker {
   private static _instance: DeployWithDocker;
   protected static docker: Docker | null = null;
+  protected timers: Map<string, NodeJS.Timeout> = new Map();
   private constructor(docker: Docker) {
     DeployWithDocker.docker = docker;
   }
@@ -147,9 +148,16 @@ export class DeployWithDocker {
   }
 
   lifespan(containerId: string, lifespan: number = 60000): void {
-    setTimeout(async () => {
-      if (await this.isRunning(containerId)) this.stop(containerId);
-    }, lifespan);
+    if (this.timers.has(containerId)) {
+       this.timers.get(containerId)?.refresh();
+      return;
+    }
+    this.timers.set(
+      containerId,
+      setTimeout(async () => {
+        if (await this.isRunning(containerId)) this.delete(containerId);
+      }, lifespan)
+    );
   }
 
   async start(containerId: string) {
@@ -163,6 +171,21 @@ export class DeployWithDocker {
       }
       logger.info(
         "Docker container started successfully with ID: " + container.id
+      );
+    });
+  }
+
+  delete(containerId: string) {
+    const container = DeployWithDocker.docker?.getContainer(containerId);
+    if (!container) {
+      return logger.error("Container not found: " + containerId);
+    }
+    container.remove({ force: true }, (err) => {
+      if (err) {
+        return logger.error("Error deleting Docker container:" + err);
+      }
+      logger.info(
+        "Docker container deleted successfully with ID: " + container.id
       );
     });
   }
