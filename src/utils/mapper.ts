@@ -22,3 +22,10 @@ export function mapToPortBindings(ports: DeployRun["ports"]): Record<
     return acc;
   }, {});
 }
+
+
+export function mapToEnv(
+  environments: Record<string, string>
+): string[] {
+  return Object.entries(environments).map(([key, value]) => `${key}=${value}`);
+}

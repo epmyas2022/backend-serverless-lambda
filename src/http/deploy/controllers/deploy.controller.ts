@@ -41,16 +41,7 @@ async function post(
   response: Response
 ) {
   const { name, port = 80, from } = request.body;
-
-  //TODO: consytruir imagen del proyecto si no existe y guardar informacion en BD
-  /*   await startWorker({
-    name,
-    image,
-    host: host || "0.0.0.0",
-    port: port || 80,
-    externalPort: 8088,
-  }); */
-
+  
   if (from === "image") {
     await startWorker({
       from: "image",
@@ -66,7 +57,7 @@ async function post(
     await startWorker({
       from: "dockerFile",
       name,
-      port: 80,
+      port,
       dockerFilePath,
       path: path,
       externalPort: port,

@@ -19,20 +19,18 @@ parentPort?.on(
   "message",
   async (data: ServerConfigDockerFile | ServerConfigImage) => {
     logger.info("Attempting to start services...");
-    const { name, port, externalPort, from } = data;
+    const { name, port, externalPort, from, environments = {} } = data;
 
     const status = await RedisClient.get(`status:${name}`);
 
     if (status === StatusContainer.STARTING) {
-      logger.warn(
-        `Blocked potencial condition race for worker: ${name}`
-      );
+      logger.warn(`Blocked potencial condition race for worker: ${name}`);
       return;
     }
 
     await RedisClient.set(`status:${name}`, StatusContainer.STARTING);
 
-    await sleep(10000); // simulate condition race
+    //await sleep(5000); // simulate condition race
 
     const docker = DeployWithDocker.init();
 
@@ -40,11 +38,7 @@ parentPort?.on(
     let imageSaved = null;
 
     if (!isRunning && from === "dockerFile") {
-      const {
-        path,
-        dockerFilePath: dockerfile = "./Dockerfile",
-        environments = {},
-      } = data;
+      const { path, dockerFilePath: dockerfile = "./Dockerfile" } = data;
       imageSaved = await docker.build({
         path,
         dockerfile,
@@ -57,6 +51,7 @@ parentPort?.on(
       await docker.run({
         image: data.imageName,
         name,
+        environments,
         ports: {
           [externalPort]: port.toString(),
         },

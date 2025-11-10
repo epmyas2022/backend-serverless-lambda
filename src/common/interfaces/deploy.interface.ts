@@ -10,5 +10,6 @@ export interface DeployRun {
   name: string;
   ports: {
     [portExternal: string]: string; // mapping of internal to external ports
-  }
+  };
+  environments?: Record<string, string>;
 }

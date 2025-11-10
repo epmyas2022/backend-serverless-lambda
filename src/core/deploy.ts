@@ -8,7 +8,11 @@ import type {
   DeployRun,
   DeployBuild,
 } from "../common/interfaces/deploy.interface.ts";
-import { mapToExposedPorts, mapToPortBindings } from "../utils/mapper.ts";
+import {
+  mapToEnv,
+  mapToExposedPorts,
+  mapToPortBindings,
+} from "../utils/mapper.ts";
 import { StatusContainer } from "../common/constants/deploy.const.ts";
 import { catchError } from "../utils/helper.ts";
 
@@ -117,7 +121,7 @@ export class DeployWithDocker {
   }
 
   async run(options: DeployRun) {
-    const { image, name, ports } = options;
+    const { image, name, ports, environments = {} } = options;
     const ExposedPorts = mapToExposedPorts(ports);
     const PortBindings = mapToPortBindings(ports);
 
@@ -126,11 +130,13 @@ export class DeployWithDocker {
       return;
     }
 
+
     DeployWithDocker.docker?.createContainer(
       {
         name,
         ExposedPorts,
         Image: image,
+        Env: mapToEnv(environments),
         HostConfig: {
           PortBindings,
         },
