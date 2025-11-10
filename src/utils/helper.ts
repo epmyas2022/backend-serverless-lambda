@@ -46,8 +46,8 @@ export function createProxy(
   return createProxyMiddleware({
     target: `http${ssl ? "s" : ""}://${target}`,
     changeOrigin: true,
-    timeout: 5000,
-    proxyTimeout: 5000,
+    timeout: 8000,
+    proxyTimeout: 8000,
     on: {
       error: (err: Error, req: Request, _res: Response | Socket) => {
         logger.error(`Proxy error for ${req.url}: ${err.message}`);
