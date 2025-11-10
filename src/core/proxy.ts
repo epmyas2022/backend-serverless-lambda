@@ -2,26 +2,24 @@ import { type Request, type Response } from "express";
 import { createProxy, subdomainFromName } from "../utils/helper.ts";
 import { DeployWithDocker } from "./deploy.ts";
 import { startWorker } from "./worker.ts";
-import { logger } from "../config/logger.ts";
+import { DatabaseClient } from "../db/database-client.ts";
+import { servicesTable } from "../schemas/service.schema.ts";
+import { eq } from "drizzle-orm";
 
-const tempProject = new Map<
-  string,
-  { host: string; port: number; image: string }
->();
-
-tempProject.set("welcome-to-docker", {
-  host: "localhost",
-  port: 8088,
-  image: "docker/welcome-to-docker:latest",
-});
-
-export function proxyMiddleware(req: Request, res: Response, next: () => void) {
+export async function proxyMiddleware(
+  req: Request,
+  res: Response,
+  next: () => void
+) {
   const subdomain = subdomainFromName(req.hostname);
 
   if (!subdomain) {
     return next();
   }
-  const project = tempProject.get(subdomain);
+  const project = await DatabaseClient.select()
+    .from(servicesTable)
+    .where(eq(servicesTable.name, subdomain))
+    .get();
 
   if (!project) {
     return next();
@@ -29,18 +27,17 @@ export function proxyMiddleware(req: Request, res: Response, next: () => void) {
 
   const docker = DeployWithDocker.init();
 
-  const target = `${project.host}:${project.port}`;
+  const target = `localhost:${project.externalPort}`;
 
   const proxy = createProxy(target, false, async (_err, _req, _res) => {
     const exists = await docker.exists(subdomain);
-    logger.info(`Container ${subdomain} exists: ${exists}`);
     if (!exists) {
-      startWorker({
+      await startWorker({
+        from: "image",
         name: subdomain,
-        host: project.host,
         port: 80,
-        image: project.image,
-        externalPort: project.port,
+        imageName: project.image,
+        externalPort: project.externalPort || 80,
       });
     }
   });

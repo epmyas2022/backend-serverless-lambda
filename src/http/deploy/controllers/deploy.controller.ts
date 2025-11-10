@@ -40,7 +40,7 @@ async function post(
   request: ValidatedRequestBody<typeof createDeploySchema>,
   response: Response
 ) {
-  const { name, host, port, image } = request.body;
+  const { name, port = 80, from } = request.body;
 
   //TODO: consytruir imagen del proyecto si no existe y guardar informacion en BD
   /*   await startWorker({
@@ -50,6 +50,28 @@ async function post(
     port: port || 80,
     externalPort: 8088,
   }); */
+
+  if (from === "image") {
+    await startWorker({
+      from: "image",
+      name,
+      port: 80,
+      imageName: request.body.image,
+      externalPort: port,
+    });
+  }
+
+  if (from === "dockerFile") {
+    const { dockerfile: dockerFilePath, path } = request.body;
+    await startWorker({
+      from: "dockerFile",
+      name,
+      port: 80,
+      dockerFilePath,
+      path: path,
+      externalPort: port,
+    });
+  }
 
   return response.status(201).json({
     message: "Worker started successfully",

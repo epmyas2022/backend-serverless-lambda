@@ -1,10 +1,17 @@
 import { Worker } from "node:worker_threads";
 import { logger } from "../config/logger.ts";
-import type { ServerConfig } from "../common/interfaces/server.interface.ts";
+import type {
+  ServerConfigImage,
+  ServerConfigDockerFile,
+} from "../common/interfaces/server.interface.ts";
 
-export async function startWorker(workerData: ServerConfig): Promise<void> {
+export async function startWorker(
+  workerData: ServerConfigDockerFile | ServerConfigImage
+): Promise<void> {
+
   return new Promise<void>((resolve, reject) => {
     try {
+
       const worker = new Worker(new URL("./server.ts", import.meta.url), {
         workerData,
         execArgv: ["-r", "ts-node/register"],

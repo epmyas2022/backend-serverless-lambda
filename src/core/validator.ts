@@ -1,8 +1,8 @@
 import { type Response, type Request } from "express";
-import type { ZodObject } from "zod";
+import type { ZodObject, ZodUnion } from "zod";
 
 function validateInput(
-  schema: ZodObject,
+  schema: ZodObject | ZodUnion,
   data: any,
   { res, next }: { res: Response; next: Function }
 ) {
@@ -18,17 +18,17 @@ function validateInput(
 }
 
 export const validator = {
-  query: (schema: ZodObject) => {
+  query: (schema: ZodObject | ZodUnion) => {
     return (req: Request, res: Response, next: Function) => {
       return validateInput(schema, req.query, { res, next });
     };
   },
-  body: (schema: ZodObject) => {
+  body: (schema: ZodObject | ZodUnion) => {
     return (req: Request, res: Response, next: Function) => {
       return validateInput(schema, req.body, { res, next });
     };
   },
-  params: (schema: ZodObject) => {
+  params: (schema: ZodObject | ZodUnion) => {
     return (req: Request, res: Response, next: Function) => {
       return validateInput(schema, req.params, { res, next });
     };

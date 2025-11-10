@@ -51,7 +51,7 @@ export class DeployWithDocker {
     // Implementar funcionalidad de Docker Compose si es necesario
   }
 
-  async build(args: DeployBuild) {
+  async build(args: DeployBuild): Promise<string> {
     const { path } = args;
 
     logger.info("Building Docker image from path: " + path);
@@ -60,23 +60,28 @@ export class DeployWithDocker {
 
     const stream = await directoryStream(join(path));
 
-    DeployWithDocker.docker?.buildImage(
-      stream,
-      {
-        t: name,
-        dockerfile: dockerfile,
-        buildargs: environments,
-      },
-      function (err, response) {
-        if (err) {
-          return logger.error("Error building Docker image:", err);
+    return new Promise((resolve, reject) => {
+      DeployWithDocker.docker?.buildImage(
+        stream,
+        {
+          t: name,
+          dockerfile: dockerfile,
+          buildargs: environments,
+        },
+        function (err, response) {
+          if (err) {
+            logger.error("Error building Docker image:", err);
+            reject(err);
+          }
+          response?.pipe(process.stdout, { end: true });
+          response?.on("end", () => {
+            logger.info("Docker image built successfully");
+            //name of the image is passed to resolve
+            resolve(name);
+          });
         }
-        response?.pipe(process.stdout, { end: true });
-        response?.on("end", () => {
-          logger.info("Docker image built successfully");
-        });
-      }
-    );
+      );
+    });
   }
   async status(containerId: string) {
     const status = await DeployWithDocker.docker
@@ -149,7 +154,7 @@ export class DeployWithDocker {
 
   lifespan(containerId: string, lifespan: number = 60000): void {
     if (this.timers.has(containerId)) {
-       this.timers.get(containerId)?.refresh();
+      this.timers.get(containerId)?.refresh();
       return;
     }
     this.timers.set(
