@@ -6,6 +6,7 @@ export const servicesTable = sqliteTable("services", {
   externalPort: int().default(80),
   port: int().notNull(),
   image: text().notNull(),
+  environments: text(),
 });
 
 
