@@ -1,0 +1,24 @@
+services:
+  backend-gateway-dev:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile
+      target: builder-dev
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    networks:
+      - network-proxy
+    environment:
+      - DOCKER_HOST=host.docker.internal
+      - DOCKER_PORT=2375
+      - DOCKER_NETWORK=backend-serverless-lambda_network-proxy
+      - DB_FILE_NAME=${DB_FILE_NAME:-file:database.db}
+
+
+networks:
+   network-proxy:
+     driver: bridge
+     external: false

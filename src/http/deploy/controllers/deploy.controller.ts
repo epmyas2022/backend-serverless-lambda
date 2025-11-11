@@ -40,15 +40,15 @@ async function post(
   request: ValidatedRequestBody<typeof createDeploySchema>,
   response: Response
 ) {
-  const { name, port = 80, from } = request.body;
-  
+  const { name, port = 80, from, environments = {} } = request.body;
+
   if (from === "image") {
     await startWorker({
       from: "image",
       name,
-      port: 80,
+      port,
       imageName: request.body.image,
-      externalPort: port,
+      environments,
     });
   }
 
@@ -60,7 +60,7 @@ async function post(
       port,
       dockerFilePath,
       path: path,
-      externalPort: port,
+      environments,
     });
   }
 

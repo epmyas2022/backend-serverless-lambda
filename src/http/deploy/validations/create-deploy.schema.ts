@@ -5,6 +5,7 @@ const deploySchemaImage = z.object({
   name: z.string().min(3).max(50),
   port: z.optional(z.number().min(1).max(65535)),
   image: z.string().min(3).max(100),
+  environments: z.record(z.string(), z.string()).optional(),
 });
 
 const deploySchemaDockerfile = z.object({
@@ -13,6 +14,7 @@ const deploySchemaDockerfile = z.object({
   port: z.optional(z.number().min(1).max(65535)),
   dockerfile: z.string().min(3).max(100),
   path: z.string().min(3).max(100),
+  environments: z.record(z.string(), z.string()).optional(),
 });
 
 export const createDeploySchema = z.discriminatedUnion("from", [

@@ -21,6 +21,8 @@ async function main() {
 
   app.use("/api", deployRouter);
 
+  app.get("/", (_req, res) => res.send("Serverless Lambda is running"));
+
   app.listen(80, (error) => {
     if (error) {
       logger.error("Error starting serverless app:" + error);

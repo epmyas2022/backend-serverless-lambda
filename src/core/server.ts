@@ -19,7 +19,7 @@ parentPort?.on(
   "message",
   async (data: ServerConfigDockerFile | ServerConfigImage) => {
     logger.info("Attempting to start services...");
-    const { name, port, externalPort, from, environments = {} } = data;
+    const { name, port, from, environments = {} } = data;
 
     const status = await RedisClient.get(`status:${name}`);
 
@@ -52,9 +52,7 @@ parentPort?.on(
         image: data.imageName,
         name,
         environments,
-        ports: {
-          [externalPort]: port.toString(),
-        },
+        ports: { [port]: port.toString() },
       });
       imageSaved = data.imageName;
     }
@@ -64,14 +62,13 @@ parentPort?.on(
         .values({
           name,
           image: imageSaved,
-          externalPort,
           port,
+          environments: JSON.stringify(environments),
         })
         .onConflictDoUpdate({
           target: servicesTable.name,
           set: {
             image: imageSaved,
-            externalPort,
             port,
           },
         });

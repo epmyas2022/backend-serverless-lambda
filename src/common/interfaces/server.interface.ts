@@ -1,6 +1,5 @@
 export interface ServerConfig {
   name: string;
-  externalPort: number;
   port: number;
   environments?: Record<string, string>;
   service?: {

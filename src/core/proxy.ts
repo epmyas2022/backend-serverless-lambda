@@ -27,7 +27,9 @@ export async function proxyMiddleware(
 
   const docker = DeployWithDocker.init();
 
-  const target = `localhost:${project.externalPort}`;
+  const target = `${subdomain}:${project.port}`;
+
+  const environments = project.environments ? JSON.parse(project.environments) : {};
 
   const proxy = createProxy(target, false, async (_err, _req, _res) => {
     const exists = await docker.exists(subdomain);
@@ -35,9 +37,9 @@ export async function proxyMiddleware(
       await startWorker({
         from: "image",
         name: subdomain,
-        port: 80,
+        port: project.port,
         imageName: project.image,
-        externalPort: project.externalPort || 80,
+        environments,
       });
     }
   });

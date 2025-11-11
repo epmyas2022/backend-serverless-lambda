@@ -8,11 +8,7 @@ import type {
   DeployRun,
   DeployBuild,
 } from "../common/interfaces/deploy.interface.ts";
-import {
-  mapToEnv,
-  mapToExposedPorts,
-  mapToPortBindings,
-} from "../utils/mapper.ts";
+import { mapToEnv, mapToExposedPorts } from "../utils/mapper.ts";
 import { StatusContainer } from "../common/constants/deploy.const.ts";
 import { catchError } from "../utils/helper.ts";
 
@@ -123,13 +119,11 @@ export class DeployWithDocker {
   async run(options: DeployRun) {
     const { image, name, ports, environments = {} } = options;
     const ExposedPorts = mapToExposedPorts(ports);
-    const PortBindings = mapToPortBindings(ports);
 
     if (await this.exists(name)) {
       logger.info("Container already exists:" + name);
       return;
     }
-
 
     DeployWithDocker.docker?.createContainer(
       {
@@ -138,7 +132,7 @@ export class DeployWithDocker {
         Image: image,
         Env: mapToEnv(environments),
         HostConfig: {
-          PortBindings,
+          NetworkMode: EnvironmentConfig.DOCKER_NETWORK,
         },
       },
       (err, container) => {
