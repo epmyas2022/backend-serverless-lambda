@@ -4,12 +4,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --exec node -r ts-node/register --env-file=.env ./src/main.ts | pino-pretty",
     "push": "npx drizzle-kit push",
     "generate": "npx drizzle-kit generate",
     "migrate": "npx drizzle-kit migrate",
-    "studio": "npx drizzle-kit studio"
+    "studio": "npx drizzle-kit studio",
+    "test": "vitest run --silent"
   },
   "keywords": [],
   "author": "",
@@ -27,6 +27,7 @@
     "redis": "^5.9.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "zod": "^4.1.12"
   },
@@ -38,6 +39,7 @@
     "@types/tar-fs": "^2.0.4",
     "drizzle-kit": "^0.31.6",
     "nodemon": "^3.1.10",
-    "tsx": "^4.20.6"
+    "tsx": "^4.20.6",
+    "vitest": "^4.1.8"
   }
 }

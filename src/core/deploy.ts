@@ -19,10 +19,11 @@ export class DeployWithDocker {
   private static _instance: DeployWithDocker;
   protected static docker: Docker | null = null;
   protected timers: Map<string, NodeJS.Timeout> = new Map();
+  protected  processUuid: string = crypto.randomUUID();
   private constructor(docker: Docker) {
     DeployWithDocker.docker = docker;
   }
-  static init() {
+  static init(processUuid: string = crypto.randomUUID()): DeployWithDocker {
     if (DeployWithDocker._instance) return DeployWithDocker._instance;
 
     const docker = new Docker({
@@ -33,12 +34,16 @@ export class DeployWithDocker {
 
     docker.ping((err) => {
       if (err)
-        return logger.error("Docker is not running or not accessible:", err);
+        return logger.error(
+          `[${processUuid}] Docker is not running or not accessible:`,
+          err,
+        );
 
-      logger.info("Docker client initialized");
+      logger.info(`[${processUuid}] Docker client initialized`);
     });
 
     DeployWithDocker._instance = new DeployWithDocker(docker);
+    DeployWithDocker._instance.processUuid = processUuid;
 
     return DeployWithDocker._instance;
   }
@@ -54,7 +59,7 @@ export class DeployWithDocker {
   async build(args: DeployBuild): Promise<string> {
     const { path } = args;
 
-    logger.info("Building Docker image from path: " + path);
+    logger.info(`[${this.processUuid}] Building Docker image from path: ${path}`);
 
     const { dockerfile = "Dockerfile", environments = {}, name } = args;
 
@@ -70,16 +75,16 @@ export class DeployWithDocker {
         },
         function (err, response) {
           if (err) {
-            logger.error("Error building Docker image:", err);
+            logger.error(`[${DeployWithDocker._instance?.processUuid}] Error building Docker image:`, err);
             reject(err);
           }
           response?.pipe(process.stdout, { end: true });
           response?.on("end", () => {
-            logger.info("Docker image built successfully");
+            logger.info(`[${DeployWithDocker._instance?.processUuid}] Docker image built successfully`);
             //name of the image is passed to resolve
             resolve(name);
           });
-        }
+        },
       );
     });
   }
@@ -121,7 +126,7 @@ export class DeployWithDocker {
     const ExposedPorts = mapToExposedPorts(ports);
 
     if (await this.exists(name)) {
-      logger.info("Container already exists:" + name);
+      logger.info(`[${this.processUuid}] Container already exists: ${name}`);
       return;
     }
 
@@ -137,18 +142,18 @@ export class DeployWithDocker {
       },
       (err, container) => {
         if (err) {
-          return logger.error("Error creating Docker container:" + err);
+          return logger.error(`[${this.processUuid}] Error creating Docker container: ${err}`);
         }
 
         container?.start((err) => {
           if (err) {
-            return logger.error("Error starting Docker container:" + err);
+            return logger.error(`[${this.processUuid}] Error starting Docker container: ${err}`);
           }
           logger.info(
-            `Docker container started successfully with ID: ${container.id}`
+            `[${this.processUuid}] Docker container started successfully with ID: ${container.id}`,
           );
         });
-      }
+      },
     );
   }
 
@@ -161,21 +166,21 @@ export class DeployWithDocker {
       containerId,
       setTimeout(async () => {
         if (await this.isRunning(containerId)) this.delete(containerId);
-      }, lifespan)
+      }, lifespan),
     );
   }
 
   async start(containerId: string) {
     const container = DeployWithDocker.docker?.getContainer(containerId);
     if (!container) {
-      return logger.error("Container not found: " + containerId);
+      return logger.error(`[${this.processUuid}] Container not found: ${containerId}`);
     }
     container.start((err) => {
       if (err) {
-        return logger.error("Error starting Docker container:" + err);
+        return logger.error(`[${this.processUuid}] Error starting Docker container: ${err}`);
       }
       logger.info(
-        "Docker container started successfully with ID: " + container.id
+        `[${this.processUuid}] Docker container started successfully with ID: ${container.id}`,
       );
     });
   }
@@ -183,14 +188,14 @@ export class DeployWithDocker {
   delete(containerId: string) {
     const container = DeployWithDocker.docker?.getContainer(containerId);
     if (!container) {
-      return logger.error("Container not found: " + containerId);
+      return logger.error(`[${this.processUuid}] Container not found: ${containerId}`);
     }
     container.remove({ force: true }, (err) => {
       if (err) {
-        return logger.error("Error deleting Docker container:" + err);
+        return logger.error(`[${this.processUuid}] Error deleting Docker container: ${err}`);
       }
       logger.info(
-        "Docker container deleted successfully with ID: " + container.id
+        `[${this.processUuid}] Docker container deleted successfully with ID: ${container.id}`,
       );
     });
   }
@@ -198,14 +203,14 @@ export class DeployWithDocker {
   stop(containerId: string) {
     const container = DeployWithDocker.docker?.getContainer(containerId);
     if (!container) {
-      return logger.error("Container not found: " + containerId);
+      return logger.error(`[${this.processUuid}] Container not found: ${containerId}`);
     }
     container.stop((err) => {
       if (err) {
-        return logger.error("Error stopping Docker container:" + err);
+        return logger.error(`[${this.processUuid}] Error stopping Docker container: ${err}`);
       }
       logger.info(
-        "Docker container stopped successfully with ID: " + container.id
+        `[${this.processUuid}] Docker container stopped successfully with ID: ${container.id}`,
       );
     });
   }

@@ -9,7 +9,7 @@ import { RedisClient } from "../db/redis-client.ts";
 import { StatusContainer } from "../common/constants/deploy.const.ts";
 import { DatabaseClient } from "../db/database-client.ts";
 import { servicesTable } from "../schemas/service.schema.ts";
-import { sleep } from "../utils/helper.ts";
+import crypto from "node:crypto";
 
 if (!parentPort) {
   logger.error("No parent port found for worker");
@@ -20,59 +20,67 @@ parentPort?.on(
   async (data: ServerConfigDockerFile | ServerConfigImage) => {
     logger.info("Attempting to start services...");
     const { name, port, from, environments = {} } = data;
+    try {
+      const status = await RedisClient.get(`status:${name}`);
+      const processUuid = crypto.randomUUID().slice(0, 4);
 
-    const status = await RedisClient.get(`status:${name}`);
+      if(status === StatusContainer.RUNNING) {
+        logger.info(`Service [${processUuid}] ${name} is already running`);
+        return;
+      }
 
-    if (status === StatusContainer.STARTING) {
-      logger.warn(`Blocked potencial condition race for worker: ${name}`);
-      return;
-    }
+      if (status === StatusContainer.STARTING) {
+        logger.warn(`[${processUuid}] Blocked potencial condition race for worker: ${name}`);
+        return;
+      }
 
-    await RedisClient.set(`status:${name}`, StatusContainer.STARTING);
+      await RedisClient.set(`status:${name}`, StatusContainer.STARTING);
 
-    //await sleep(5000); // simulate condition race
+      const docker = DeployWithDocker.init(processUuid);
 
-    const docker = DeployWithDocker.init();
+      const isRunning = await docker.isRunning(name);
+      let imageSaved = null;
 
-    const isRunning = await docker.isRunning(name);
-    let imageSaved = null;
-
-    if (!isRunning && from === "dockerFile") {
-      const { path, dockerFilePath: dockerfile = "./Dockerfile" } = data;
-      imageSaved = await docker.build({
-        path,
-        dockerfile,
-        name,
-        environments,
-      });
-    }
-
-    if (!isRunning && from === "image") {
-      await docker.run({
-        image: data.imageName,
-        name,
-        environments,
-        ports: { [port]: port.toString() },
-      });
-      imageSaved = data.imageName;
-    }
-
-    if (imageSaved)
-      await DatabaseClient.insert(servicesTable)
-        .values({
+      if (!isRunning && from === "dockerFile") {
+        const { path, dockerFilePath: dockerfile = "./Dockerfile" } = data;
+        imageSaved = await docker.build({
+          path,
+          dockerfile,
           name,
-          image: imageSaved,
-          port,
-          environments: JSON.stringify(environments),
-        })
-        .onConflictDoUpdate({
-          target: servicesTable.name,
-          set: {
+          environments,
+        });
+      }
+
+      if (!isRunning && from === "image") {
+        await docker.run({
+          image: data.imageName,
+          name,
+          environments,
+          ports: { [port]: port.toString() },
+        });
+        imageSaved = data.imageName;
+      }
+
+      if (imageSaved)
+        await DatabaseClient.insert(servicesTable)
+          .values({
+            name,
             image: imageSaved,
             port,
-          },
-        });
-
-    await RedisClient.set(`status:${name}`, StatusContainer.RUNNING);
-  }
+            environments: JSON.stringify(environments),
+          })
+          .onConflictDoUpdate({
+            target: servicesTable.name,
+            set: {
+              image: imageSaved,
+              port,
+            },
+          });
+          
+    } catch (error) {
+      throw error;
+    } finally {
+      await RedisClient.set(`status:${name}`, StatusContainer.RUNNING);
+    }
+  },
 );
