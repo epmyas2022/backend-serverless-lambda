@@ -11,6 +11,7 @@ import type {
 import { mapToEnv, mapToExposedPorts } from "../utils/mapper.ts";
 import { StatusContainer } from "../common/constants/deploy.const.ts";
 import { catchError } from "../utils/helper.ts";
+import { RedisClient } from "../db/redis-client.ts";
 
 /*
  * Clase singleton para gestionar despliegues con Docker
@@ -18,8 +19,9 @@ import { catchError } from "../utils/helper.ts";
 export class DeployWithDocker {
   private static _instance: DeployWithDocker;
   protected static docker: Docker | null = null;
+  protected static redis: typeof RedisClient;
   protected timers: Map<string, NodeJS.Timeout> = new Map();
-  protected  processUuid: string = crypto.randomUUID();
+  protected processUuid: string = crypto.randomUUID();
   private constructor(docker: Docker) {
     DeployWithDocker.docker = docker;
   }
@@ -59,9 +61,25 @@ export class DeployWithDocker {
   async build(args: DeployBuild): Promise<string> {
     const { path } = args;
 
-    logger.info(`[${this.processUuid}] Building Docker image from path: ${path}`);
+    logger.info(
+      `[${this.processUuid}] Building Docker image from path: ${path}`,
+    );
 
     const { dockerfile = "Dockerfile", environments = {}, name } = args;
+
+    const status = await RedisClient.get(`status:${name}`);
+
+    if (status === StatusContainer.STARTING) {
+      logger.warn(
+        `[${this.processUuid}] Blocked potencial condition race for worker: ${name}`,
+      );
+      return name;
+    }
+
+    await DeployWithDocker.redis.set(
+      `status:${name}`,
+      StatusContainer.STARTING,
+    );
 
     const stream = await directoryStream(join(path));
 
@@ -73,15 +91,28 @@ export class DeployWithDocker {
           dockerfile: dockerfile,
           buildargs: environments,
         },
-        function (err, response) {
+        async function (err, response) {
           if (err) {
-            logger.error(`[${DeployWithDocker._instance?.processUuid}] Error building Docker image:`, err);
+            logger.error(
+              `[${DeployWithDocker._instance?.processUuid}] Error building Docker image:`,
+              err,
+            );
+            await DeployWithDocker.redis.set(
+              `status:${name}`,
+              StatusContainer.DEAD,
+            );
             reject(err);
           }
           response?.pipe(process.stdout, { end: true });
-          response?.on("end", () => {
-            logger.info(`[${DeployWithDocker._instance?.processUuid}] Docker image built successfully`);
+          response?.on("end", async () => {
+            logger.info(
+              `[${DeployWithDocker._instance?.processUuid}] Docker image built successfully`,
+            );
             //name of the image is passed to resolve
+            await DeployWithDocker.redis.set(
+              `status:${name}`,
+              StatusContainer.RUNNING,
+            );
             resolve(name);
           });
         },
@@ -125,10 +156,25 @@ export class DeployWithDocker {
     const { image, name, ports, environments = {} } = options;
     const ExposedPorts = mapToExposedPorts(ports);
 
+    const status = await RedisClient.get(`status:${name}`);
+
+    if (status === StatusContainer.STARTING) {
+      logger.warn(
+        `[${this.processUuid}] Blocked potencial condition race for worker: ${name}`,
+      );
+      return;
+    }
+
+
     if (await this.exists(name)) {
       logger.info(`[${this.processUuid}] Container already exists: ${name}`);
       return;
     }
+
+    await DeployWithDocker.redis.set(
+      `status:${name}`,
+      StatusContainer.STARTING,
+    );
 
     DeployWithDocker.docker?.createContainer(
       {
@@ -142,13 +188,26 @@ export class DeployWithDocker {
       },
       (err, container) => {
         if (err) {
-          return logger.error(`[${this.processUuid}] Error creating Docker container: ${err}`);
+          return logger.error(
+            `[${this.processUuid}] Error creating Docker container: ${err}`,
+          );
         }
 
-        container?.start((err) => {
+        container?.start(async (err) => {
           if (err) {
-            return logger.error(`[${this.processUuid}] Error starting Docker container: ${err}`);
+            await DeployWithDocker.redis.set(
+              `status:${name}`,
+              StatusContainer.DEAD,
+            );
+            return logger.error(
+              `[${this.processUuid}] Error starting Docker container: ${err}`,
+            );
           }
+
+          await DeployWithDocker.redis.set(
+            `status:${name}`,
+            StatusContainer.RUNNING,
+          );
           logger.info(
             `[${this.processUuid}] Docker container started successfully with ID: ${container.id}`,
           );
@@ -173,11 +232,15 @@ export class DeployWithDocker {
   async start(containerId: string) {
     const container = DeployWithDocker.docker?.getContainer(containerId);
     if (!container) {
-      return logger.error(`[${this.processUuid}] Container not found: ${containerId}`);
+      return logger.error(
+        `[${this.processUuid}] Container not found: ${containerId}`,
+      );
     }
     container.start((err) => {
       if (err) {
-        return logger.error(`[${this.processUuid}] Error starting Docker container: ${err}`);
+        return logger.error(
+          `[${this.processUuid}] Error starting Docker container: ${err}`,
+        );
       }
       logger.info(
         `[${this.processUuid}] Docker container started successfully with ID: ${container.id}`,
@@ -188,12 +251,21 @@ export class DeployWithDocker {
   delete(containerId: string) {
     const container = DeployWithDocker.docker?.getContainer(containerId);
     if (!container) {
-      return logger.error(`[${this.processUuid}] Container not found: ${containerId}`);
+      return logger.error(
+        `[${this.processUuid}] Container not found: ${containerId}`,
+      );
     }
-    container.remove({ force: true }, (err) => {
+    container.remove({ force: true }, async (err) => {
       if (err) {
-        return logger.error(`[${this.processUuid}] Error deleting Docker container: ${err}`);
+        return logger.error(
+          `[${this.processUuid}] Error deleting Docker container: ${err}`,
+        );
       }
+
+      await DeployWithDocker.redis.set(
+        `status:${containerId}`,
+        StatusContainer.DEAD,
+      );
       logger.info(
         `[${this.processUuid}] Docker container deleted successfully with ID: ${container.id}`,
       );
@@ -203,15 +275,29 @@ export class DeployWithDocker {
   stop(containerId: string) {
     const container = DeployWithDocker.docker?.getContainer(containerId);
     if (!container) {
-      return logger.error(`[${this.processUuid}] Container not found: ${containerId}`);
+      return logger.error(
+        `[${this.processUuid}] Container not found: ${containerId}`,
+      );
     }
-    container.stop((err) => {
+    container.stop(async (err) => {
       if (err) {
-        return logger.error(`[${this.processUuid}] Error stopping Docker container: ${err}`);
+        return logger.error(
+          `[${this.processUuid}] Error stopping Docker container: ${err}`,
+        );
       }
+      await DeployWithDocker.redis.set(
+        `status:${containerId}`,
+        StatusContainer.PAUSED,
+      );
       logger.info(
         `[${this.processUuid}] Docker container stopped successfully with ID: ${container.id}`,
       );
     });
+  }
+
+  setRedisClient(redisClient: typeof RedisClient) {
+    DeployWithDocker.redis = redisClient;
+
+    return this;
   }
 }

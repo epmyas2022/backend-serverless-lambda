@@ -6,7 +6,6 @@ import type {
 } from "../common/interfaces/server.interface.ts";
 import { DeployWithDocker } from "./deploy.ts";
 import { RedisClient } from "../db/redis-client.ts";
-import { StatusContainer } from "../common/constants/deploy.const.ts";
 import { DatabaseClient } from "../db/database-client.ts";
 import { servicesTable } from "../schemas/service.schema.ts";
 import crypto from "node:crypto";
@@ -21,22 +20,11 @@ parentPort?.on(
     logger.info("Attempting to start services...");
     const { name, port, from, environments = {} } = data;
     try {
-      const status = await RedisClient.get(`status:${name}`);
       const processUuid = crypto.randomUUID().slice(0, 4);
 
-      if(status === StatusContainer.RUNNING) {
-        logger.info(`Service [${processUuid}] ${name} is already running`);
-        return;
-      }
-
-      if (status === StatusContainer.STARTING) {
-        logger.warn(`[${processUuid}] Blocked potencial condition race for worker: ${name}`);
-        return;
-      }
-
-      await RedisClient.set(`status:${name}`, StatusContainer.STARTING);
-
       const docker = DeployWithDocker.init(processUuid);
+
+      docker.setRedisClient(RedisClient);
 
       const isRunning = await docker.isRunning(name);
       let imageSaved = null;
@@ -76,11 +64,8 @@ parentPort?.on(
               port,
             },
           });
-          
     } catch (error) {
       throw error;
-    } finally {
-      await RedisClient.set(`status:${name}`, StatusContainer.RUNNING);
     }
   },
 );

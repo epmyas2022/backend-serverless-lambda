@@ -5,6 +5,7 @@ import { startWorker } from "./worker.ts";
 import { DatabaseClient } from "../db/database-client.ts";
 import { servicesTable } from "../schemas/service.schema.ts";
 import { eq } from "drizzle-orm";
+import { RedisClient } from "../db/redis-client.ts";
 
 export async function proxyMiddleware(
   req: Request,
@@ -26,6 +27,8 @@ export async function proxyMiddleware(
   }
 
   const docker = DeployWithDocker.init();
+
+  docker.setRedisClient(RedisClient);
 
   const target = `${subdomain}:${project.port}`;
 

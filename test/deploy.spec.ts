@@ -6,7 +6,6 @@ import { z } from "zod";
 import { RedisClient } from "../src/db/redis-client.ts";
 import { DeployWithDocker } from "../src/core/deploy.ts";
 
-
 const request = async (
   schema: z.infer<typeof createDeploySchema>,
 ): Promise<{
@@ -27,9 +26,10 @@ const request = async (
 
 describe("Deploy", () => {
   it("should deploy with condition race", async () => {
-
     RedisClient.flushAll();
-    DeployWithDocker.init().delete("my-serverless-app-worker");
+    DeployWithDocker.init()
+      .setRedisClient(RedisClient)
+      .delete("my-serverless-app-worker");
 
     const result = await Promise.all([
       request({
@@ -54,6 +54,10 @@ describe("Deploy", () => {
       }),
     ]);
 
-    expect(result).toEqual([{ success: true }, { success: true }, { success: true }]);
+    expect(result).toEqual([
+      { success: true },
+      { success: true },
+      { success: true },
+    ]);
   });
 });
